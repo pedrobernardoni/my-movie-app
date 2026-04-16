@@ -2,19 +2,32 @@
 import MovieCard from '@/components/MovieCard';
 import Image from 'next/image';
 
-async function getTrendingMovies() {
+type TrendingResult = {
+  movies: any[];
+  error: 'missing_key' | 'api_error' | null;
+};
+
+async function getTrendingMovies(): Promise<TrendingResult> {
+  const apiKey = process.env.TMDB_API_KEY;
+  if (!apiKey) {
+    return { movies: [], error: 'missing_key' };
+  }
+
   const res = await fetch(
-    `https://api.themoviedb.org/3/trending/movie/day?api_key=${process.env.TMDB_API_KEY}`,
-    { next: { revalidate: 3600 } } // Refreshes the data every hour
+    `https://api.themoviedb.org/3/trending/movie/day?api_key=${apiKey}`,
+    { next: { revalidate: 3600 } }
   );
-  
-  if (!res.ok) throw new Error('Failed to fetch movies');
-  const data = await res.json();
-  return data.results;
+
+  if (!res.ok) {
+    return { movies: [], error: 'api_error' };
+  }
+
+  const data = (await res.json()) as { results?: any[] };
+  return { movies: data.results ?? [], error: null };
 }
 
 export default async function HomePage() {
-  const movies = await getTrendingMovies();
+  const { movies, error } = await getTrendingMovies();
 
   return (
     <main className="min-h-screen bg-black px-6 py-12">
@@ -36,11 +49,29 @@ export default async function HomePage() {
         </p>
       </header>
       <div className="container mx-auto">
-        <div className="grid grid-cols-2 gap-6 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
-          {movies.map((movie: any) => (
-            <MovieCard key={movie.id} movie={movie} />
-          ))}
-        </div>
+        {error ? (
+          <div
+            role="alert"
+            className="mx-auto max-w-lg rounded-lg border border-zinc-700 bg-zinc-900/80 px-5 py-4 text-center text-zinc-300"
+          >
+            <p className="font-medium text-white">
+              {error === 'missing_key'
+                ? 'TMDB API key is not configured'
+                : 'Could not load trending movies'}
+            </p>
+            <p className="mt-2 text-sm text-zinc-400">
+              {error === 'missing_key'
+                ? 'Set TMDB_API_KEY in your environment (for example in Vercel Project Settings → Environment Variables), then redeploy.'
+                : 'The movie database request failed. Check your API key and try again later.'}
+            </p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 gap-6 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
+            {movies.map((movie: any) => (
+              <MovieCard key={movie.id} movie={movie} />
+            ))}
+          </div>
+        )}
       </div>
     </main>
   );

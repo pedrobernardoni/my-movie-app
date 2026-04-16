@@ -14,21 +14,31 @@ type MovieDetails = {
   genres?: Array<{ id: number; name: string }>;
 };
 
-async function getMovieDetails(id: string): Promise<MovieDetails> {
+type MovieDetailsResult =
+  | { status: "ok"; movie: MovieDetails }
+  | { status: "not_found" }
+  | { status: "error"; kind: "missing_key" | "api_error" };
+
+async function getMovieDetails(id: string): Promise<MovieDetailsResult> {
+  const apiKey = process.env.TMDB_API_KEY;
+  if (!apiKey) {
+    return { status: "error", kind: "missing_key" };
+  }
+
   const res = await fetch(
-    `https://api.themoviedb.org/3/movie/${id}?api_key=${process.env.TMDB_API_KEY}`,
+    `https://api.themoviedb.org/3/movie/${id}?api_key=${apiKey}`,
     { next: { revalidate: 3600 } }
   );
 
   if (res.status === 404) {
-    notFound();
+    return { status: "not_found" };
   }
 
   if (!res.ok) {
-    throw new Error("Failed to fetch movie details");
+    return { status: "error", kind: "api_error" };
   }
 
-  return res.json();
+  return { status: "ok", movie: await res.json() };
 }
 
 function formatRuntime(runtime?: number): string {
@@ -45,7 +55,43 @@ export default async function MovieDetailsPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const movie = await getMovieDetails(id);
+  const result = await getMovieDetails(id);
+
+  if (result.status === "not_found") {
+    notFound();
+  }
+
+  if (result.status === "error") {
+    return (
+      <main className="min-h-screen bg-black px-6 py-12 text-white">
+        <div className="container mx-auto max-w-lg text-center">
+          <Link
+            href="/"
+            className="inline-block rounded-md border border-zinc-700 px-4 py-2 text-sm text-zinc-200 hover:bg-zinc-900"
+          >
+            Back to trending
+          </Link>
+          <div
+            role="alert"
+            className="mt-8 rounded-lg border border-zinc-700 bg-zinc-900/80 px-5 py-4 text-zinc-300"
+          >
+            <p className="font-medium text-white">
+              {result.kind === "missing_key"
+                ? "TMDB API key is not configured"
+                : "Could not load this movie"}
+            </p>
+            <p className="mt-2 text-sm text-zinc-400">
+              {result.kind === "missing_key"
+                ? "Set TMDB_API_KEY in your environment (for example in Vercel Project Settings → Environment Variables), then redeploy."
+                : "The movie database request failed. Check your API key and try again later."}
+            </p>
+          </div>
+        </div>
+      </main>
+    );
+  }
+
+  const movie = result.movie;
 
   return (
     <main className="min-h-screen bg-black text-white">
