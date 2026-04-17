@@ -1,9 +1,10 @@
 // app/page.tsx
 import MovieCard from '@/components/MovieCard';
 import Image from 'next/image';
+import type { TrendingMovie } from '@/types/tmdb';
 
 type TrendingResult = {
-  movies: any[];
+  movies: TrendingMovie[];
   error: 'missing_key' | 'api_error' | null;
 };
 
@@ -22,7 +23,7 @@ async function getTrendingMovies(): Promise<TrendingResult> {
     return { movies: [], error: 'api_error' };
   }
 
-  const data = (await res.json()) as { results?: any[] };
+  const data = (await res.json()) as { results?: TrendingMovie[] };
   return { movies: data.results ?? [], error: null };
 }
 
@@ -67,7 +68,7 @@ export default async function HomePage() {
           </div>
         ) : (
           <div className="grid grid-cols-2 gap-6 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
-            {movies.map((movie: any) => (
+            {movies.map((movie) => (
               <MovieCard key={movie.id} movie={movie} />
             ))}
           </div>

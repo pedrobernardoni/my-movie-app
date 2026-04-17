@@ -1,8 +1,9 @@
 // Importando módulos nativos do Next.js para uso de imagens e links
 import Image from 'next/image';
 import Link from 'next/link';
+import type { TrendingMovie } from '@/types/tmdb';
 
-export default function MovieCard({ movie }: { movie: any}) {
+export default function MovieCard({ movie }: { movie: TrendingMovie }) {
     return (
         <Link href={`/movie/${movie.id}`} className="group block overflow-hidden rounded-xl bg-zinc-900 transition-all hover:scale-105">
             <div className="relative aspect-[2/3] w-full">
